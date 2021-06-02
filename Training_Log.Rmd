@@ -121,6 +121,7 @@ kable(activities %>% select(DayofWeek,Type,Distance_Miles,Duration_Hours,Vertica
 ```
 
 ## 3 Month Overview
+Totals are aggregated on Monday of each week. 
 ```{r echo=FALSE, fig.height=8}
 activities <- getActivitiesByPeriod(90, "weekly", FALSE)
 activities <- activities %>% mutate(date = format(as.POSIXct(Start_Time_Milli / 1000, origin = "1970-01-01"), "%D"))
