@@ -27,7 +27,7 @@ activities <- getActivitiesByPeriod(days)
 dateWhile <- 1
 today <- Sys.Date()
 dateLevels <- c(format(today))
-while(dateWhile < days){
+while(dateWhile <= days){
   dateLevels <- c(format(today - dateWhile), dateLevels)
   dateWhile <- dateWhile + 1
 }
@@ -174,3 +174,8 @@ distanceGrob <- ggplotGrob(distance)
 
 grid.arrange(durationGrob, vertGrob, distanceGrob)
 ```
+
+```{r message=FALSE,echo=FALSE}
+#TODO: Cumulative season pacing charts by activity
+```
+
