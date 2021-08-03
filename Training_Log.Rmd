@@ -11,11 +11,11 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ## Last 7 Days
-```{r thisweek, echo=FALSE, message=FALSE}
+```{r echo=FALSE, message=FALSE}
 library(reticulate)
 library(dplyr)
-use_python("/usr/local/bin/python3")
-source_python("~/Documents/Training_Log/garmin_utilities.py")
+use_python("/usr/bin/python3")
+source_python("/Users/jslomas/Documents/JohnnyLomas.github.io/garmin_utilities.py")
 days <- 7
 activities <- getActivitiesByPeriod(days)
 
@@ -43,7 +43,7 @@ totals <- getTotals(activities, "all")
 ---
 
 
-```{r thisweekplots, echo=FALSE, message=FALSE, fig.width = 14, fig.height=6}
+```{r echo=FALSE, message=FALSE, fig.width = 14, fig.height=6}
 library(ggplot2)
 library(tidyr)
 library(graphics)
@@ -122,7 +122,7 @@ kable(activities %>% select(DayofWeek,Type,Distance_Miles,Duration_Hours,Vertica
 
 ## 3 Month Overview
 Totals are aggregated on Monday of each week. 
-```{r echo=FALSE, fig.height=8}
+```{r echo=FALSE, message=FALSE, fig.height=8}
 activities <- getActivitiesByPeriod(90, "weekly", FALSE)
 activities <- activities %>% mutate(date = format(as.POSIXct(Start_Time_Milli / 1000, origin = "1970-01-01"), "%D"))
 duration <- ggplot(data = activities, aes(x=date, y=Duration_Hours)) + 
