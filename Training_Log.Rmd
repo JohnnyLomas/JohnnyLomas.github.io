@@ -14,7 +14,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r echo=FALSE, message=FALSE}
 library(reticulate)
 library(dplyr)
-use_python("/usr/bin/python3")
+#use_python("/usr/bin/python3")
 source_python("/Users/jslomas/Documents/JohnnyLomas.github.io/garmin_utilities.py")
 days <- 7
 activities <- getActivitiesByPeriod(days)

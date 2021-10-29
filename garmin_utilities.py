@@ -33,10 +33,8 @@ def doLogin(email, pswd):
         GarminConnectTooManyRequestsError,
     ) as err:
         print("Error occurred during Garmin Connect Client init: %s" % err)
-        quit()
     except Exception:  # pylint: disable=broad-except
         print("Unknown error occurred during Garmin Connect Client init")
-        quit()
 
     try:
         client.login()
@@ -46,10 +44,8 @@ def doLogin(email, pswd):
         GarminConnectTooManyRequestsError,
     ) as err:
         print("Error occurred during Garmin Connect Client login: %s" % err)
-        quit()
     except Exception:  # pylint: disable=broad-except
         print("Unknown error occurred during Garmin Connect Client login")
-        quit()
 
     return client
 
@@ -66,10 +62,10 @@ def getHrZoneDuration(activityId, client):
         GarminConnectTooManyRequestsError,
     ) as err:
         print("Error occurred during Garmin Connect Client get activity hr timezones: %s" % err)
-        quit()
+
     except Exception:  # pylint: disable=broad-except
         print("Unknown error occurred during Garmin Connect Client get activity hr timezones")
-        quit()
+
 
     returnVal = {
         'z1': hr_timezones[0]['secsInZone'],
@@ -163,10 +159,10 @@ def getActivities(email, pswd, howmany, client):
         GarminConnectTooManyRequestsError,
     ) as err:
         print("Error occurred during Garmin Connect Client get activities: %s" % err)
-        quit()
+
     except Exception:  # pylint: disable=broad-except
         print("Unknown error occurred during Garmin Connect Client get activities")
-        quit()
+        
 
     for activity in activities:
         table['activity_ID'].append(activity['activityId'])
