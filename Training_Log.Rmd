@@ -14,26 +14,46 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r echo=FALSE, message=FALSE}
 library(reticulate)
 library(dplyr)
-#use_python("/usr/bin/python3")
+library(ggplot2)
+library(tidyr)
+library(graphics)
+library(gridExtra)
+library(knitr)
+#options(scipen=999)
 source_python("/Users/jslomas/Documents/JohnnyLomas.github.io/garmin_utilities.py")
-days <- 7
-activities <- getActivitiesByPeriod(days)
+# tryCatch(
+#     expr = {
+#         appendToRecord()
+#     },
+#     error = function(e){
+#         print("Error while appending to record...")
+#         print(e)
+#     },
+#     warning = function(w){
+#     },
+#     finally = {
+#     }
+# )
 
-#activities$DayofWeek <- factor(activities$DayofWeek, levels=c("Monday","Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"))
 
-#activities <- activities %>% 
- # arrange(desc(Start_Time_Milli)) %>%
-  #mutate(Date = as.Date(paste(Month, Day, Year, sep="/"), format = '%m/%d/%Y'))
-dateWhile <- 1
 today <- Sys.Date()
+days <- 7
+now <- as.numeric(Sys.time())*1000
+weekAgo <- now - (days)*24*60*60*1000
+threeMonthsAgo <- now - (90)*24*60*60*1000
+
+activities <- read.csv("/Users/jslomas/Documents/JohnnyLomas.github.io/periodOfRecord.csv")
+thisWeek <- filter(activities, Start_Time_Milli > weekAgo)
+
+dateWhile <- 1
 dateLevels <- c(format(today))
-while(dateWhile <= days){
+while(dateWhile < days){
   dateLevels <- c(format(today - dateWhile), dateLevels)
   dateWhile <- dateWhile + 1
 }
-activities <- activities %>% mutate(Date = format(as.Date(paste(Month, Day, Year, sep="/"), format = '%m/%d/%Y')))
-activities$Date <- factor(activities$Date, levels=dateLevels)
-totals <- getTotals(activities, "all")
+thisWeek <- thisWeek %>% mutate(Date = format(as.Date(paste(Month, Day, Year, sep="/"), format = '%m/%d/%Y')))
+thisWeek$Date <- factor(thisWeek$Date, levels=dateLevels)
+totals <- getTotals(thisWeek, "all")
 ```
 
 | Distance (mi)          | Vertical (ft)               | Time (hrs)              | Zone 0 (%)            | Zone 1 (%)            | Zone 2 (%)            | Zone 3 (%)            | Zone 4 (%)            | Zone 5 (%)            |
@@ -44,12 +64,7 @@ totals <- getTotals(activities, "all")
 
 
 ```{r echo=FALSE, message=FALSE, fig.width = 14, fig.height=6}
-library(ggplot2)
-library(tidyr)
-library(graphics)
-library(gridExtra)
-
-duration <- ggplot(data = activities, aes(x=Date, y=Duration_Hours, fill=Type)) + 
+duration <- ggplot(data = thisWeek, aes(x=Date, y=Duration_Hours, fill=Type)) + 
   geom_col() +
   scale_x_discrete(drop = FALSE) +
   ylab("Time (hrs)") +
@@ -61,7 +76,7 @@ duration <- ggplot(data = activities, aes(x=Date, y=Duration_Hours, fill=Type)) 
         legend.title = element_text(size=8), 
         legend.text = element_text(size=6))
 
-zones <- ggplot(data = activities %>% 
+zones <- ggplot(data = thisWeek %>% 
               select(Date, HR_Z1, HR_Z2, HR_Z3, HR_Z4, HR_Z5) %>%  
               pivot_longer(!c(Date), names_to="Zone", values_to="Time") %>% 
               group_by(Date, Zone) %>% 
@@ -78,7 +93,7 @@ zones <- ggplot(data = activities %>%
         legend.title = element_text(size=8), 
         legend.text = element_text(size=6))
 
-vert <- ggplot(data = activities %>% mutate(
+vert <- ggplot(data = thisWeek %>% mutate(
       Vertical_Gain_Feet = Vertical_Gain_Feet/1000
     ), aes(x=Date, y=Vertical_Gain_Feet, fill=Type)) + 
   geom_col() +
@@ -92,7 +107,7 @@ vert <- ggplot(data = activities %>% mutate(
         legend.title = element_text(size=8), 
         legend.text = element_text(size=6))
 
-distance <- ggplot(data = activities, aes(x=Date, y=Distance_Miles, fill=Type)) + 
+distance <- ggplot(data = thisWeek, aes(x=Date, y=Distance_Miles, fill=Type)) + 
   geom_col() +
   scale_x_discrete(drop = FALSE) +
   ylab("Distance (mi)") +
@@ -115,17 +130,48 @@ grid.arrange(durationGrob, zonesGrob, vertGrob, distanceGrob)
 ---
 
 ```{r echo=FALSE}
-library(knitr)
-kable(activities %>% select(DayofWeek,Type,Distance_Miles,Duration_Hours,Vertical_Gain_Feet,Rating,Notes) %>% mutate_if(is.numeric, round, 2) %>% mutate(Vertical_Gain_Feet = round(Vertical_Gain_Feet, digits=0)),
+kable(thisWeek %>% select(DayofWeek,Type,Distance_Miles,Duration_Hours,Vertical_Gain_Feet,Rating,Notes) %>% mutate_if(is.numeric, round, 2) %>% mutate(Vertical_Gain_Feet = round(Vertical_Gain_Feet, digits=0)),
       caption = "This week's training log.")
 ```
 
 ## 3 Month Overview
 Totals are aggregated on Monday of each week. 
 ```{r echo=FALSE, message=FALSE, fig.height=8}
-activities <- getActivitiesByPeriod(90, "weekly", FALSE)
-activities <- activities %>% mutate(date = format(as.POSIXct(Start_Time_Milli / 1000, origin = "1970-01-01"), "%D"))
-duration <- ggplot(data = activities, aes(x=date, y=Duration_Hours)) + 
+#activities <- getActivitiesByPeriod(90, "weekly", FALSE)
+firstDayofWeek <- function(milli){
+  dayofweek <- as.numeric(strftime(as.POSIXct((milli) / 1000, origin = "1970-01-01"), format = "%u"))
+  milli1 <- milli - ((dayofweek-1)*24*60*60*1000)
+  return(format(as.POSIXct(milli1 / 1000, origin = "1970-01-01"), "%D"))
+}
+
+getWeeklies <- function(table, endDateMilli){
+  weekOfYear <- strftime(as.POSIXct(endDateMilli / 1000, origin = "1970-01-01"), format = "%V")
+  year <- strftime(as.POSIXct(endDateMilli / 1000, origin = "1970-01-01"), format = "%Y")
+  month <- as.numeric(strftime(as.POSIXct(endDateMilli / 1000, origin = "1970-01-01"), format = "%m"))
+  
+  weeklies <- table %>% 
+              filter(Year >= year & 
+                     Month >= month & 
+                     Week >= weekOfYear) %>%
+              group_by(Year) %>% 
+              group_by(Week) %>%
+              summarise(Start_Time_Milli = min(Start_Time_Milli),
+                     Distance_Miles = sum(Distance_Miles),
+                     Duration_Hours = sum(Duration_Hours),
+                     Vertical_Gain_Feet = sum(Vertical_Gain_Feet),
+                     HR_Z1 = sum(HR_Z1),
+                     HR_Z2 = sum(HR_Z2),
+                     HR_Z3 = sum(HR_Z3),
+                     HR_Z4 = sum(HR_Z4),
+                     HR_Z5 = sum(HR_Z5),
+                     Day = min(Day),
+                     Year = min(Year),
+                     Month = min(Month))
+}
+weeklySummary <- getWeeklies(activities, threeMonthsAgo)
+
+weeklySummary <- weeklySummary %>% mutate(date = firstDayofWeek(Start_Time_Milli))
+duration <- ggplot(data = weeklySummary, aes(x=date, y=Duration_Hours)) + 
   geom_col() +
   scale_x_discrete(drop = FALSE) +
   ylab("Time (hrs)") +
@@ -150,7 +196,7 @@ duration <- ggplot(data = activities, aes(x=date, y=Duration_Hours)) +
      #   legend.title = element_text(size=8), 
       #  legend.text = element_text(size=6))
 
-vert <- ggplot(data = activities %>% mutate(
+vert <- ggplot(data = weeklySummary %>% mutate(
       Vertical_Gain_Feet = Vertical_Gain_Feet/1000
     ), aes(x=date, y=Vertical_Gain_Feet)) + 
   geom_col() +
@@ -160,7 +206,7 @@ vert <- ggplot(data = activities %>% mutate(
   ggtitle("Vertical") +
   theme(axis.text.x = element_text(angle = -45, hjust=0.2, vjust=0.2))
 
-distance <- ggplot(data = activities, aes(x=date, y=Distance_Miles)) + 
+distance <- ggplot(data = weeklySummary, aes(x=date, y=Distance_Miles)) + 
   geom_col() +
   scale_x_discrete(drop = FALSE) +
   ylab("Distance (mi)") +
@@ -183,7 +229,7 @@ grid.arrange(durationGrob, vertGrob, distanceGrob)
        # geom_point() + theme(axis.text.x = element_text(angle=90, hjust = 1)) + 
         #scale_x_discrete(labels = df$date) + xlab("Date")
 
-activities <- getActivitiesByPeriod(5000, "daily", FALSE)
+#activities <- getActivitiesByPeriod(5000, "daily", FALSE)
 
 #Cumulative running over the calendar year
 running <- activities %>% 

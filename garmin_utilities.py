@@ -162,7 +162,7 @@ def getActivities(email, pswd, howmany, client):
 
     except Exception:  # pylint: disable=broad-except
         print("Unknown error occurred during Garmin Connect Client get activities")
-        
+
 
     for activity in activities:
         table['activity_ID'].append(activity['activityId'])
@@ -244,7 +244,7 @@ def getActivitiesByPeriod(period, weeklies="daily", hr=True):
     return activities
 
 def writeActivitiesCsv(table, filename):
-    table.to_csv(filename, sep=',')
+    table.to_csv(filename, sep=',', index=False)
 
 def numberToDay(numb):
     if numb == 0:
@@ -278,3 +278,27 @@ def buildWeeklies(table):
     weekly = weekly.sort_values(by=['Year', 'Month', 'Week'], ascending=False)
     #print(weekly.head())
     return weekly
+
+def appendToRecord():
+    # Load stored data file
+    activities = pd.read_csv("/Users/jslomas/Documents/JohnnyLomas.github.io/periodOfRecord.csv")
+    # Determine how many days to go back to get the outstanding data
+    latest_year = activities["Year"].max()
+    latest_month = activities.loc[(activities["Year"]==latest_year)]["Month"].max()
+    latest_day = activities.loc[(activities['Year']==latest_year) & (activities['Month']==latest_month)]["Day"].max()
+
+    now = datetime.now()
+    latest = datetime(latest_year, latest_month, latest_day)
+    delta = (now-latest).days + 1
+
+    #fetch outstanding data
+    newActivities = getActivitiesByPeriod(delta)
+    if newActivities.empty:
+        return
+
+    #Prepend new rows to existing dataframe
+    activities_complete = pd.concat([newActivities, activities]).reset_index(drop = True)
+    activities_complete = activities_complete.drop_duplicates()
+
+    #Overwrite data store
+    writeActivitiesCsv(activities_complete, "periodOfRecord.csv")
